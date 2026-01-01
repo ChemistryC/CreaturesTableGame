@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Periodic Table Game Suite</title>
+    <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap');
+
+        body {
+            margin: 0;
+            font-family: 'Inter', "FreeSans", Arial, sans-serif;
+            user-select: none;
+            overflow: hidden;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        /* --- CLEAN THEME COLORS --- */
+        body.light-mode {
+            background-color: #F3F4F6;
+            color: #1F2937;
+        }
+
+        body.dark-mode {
+            background-color: #0B0F19;
+            color: #F3F4F6;
+        }
+
+        /* Subtle Grid Pattern */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        body.dark-mode::before {
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+
+        .game-holder {
+            transform: translate(-50%);
+            position: absolute;
+            width: min(50vh, 90vw);
+            height: 100%;
+            left: 50%;
+            top: 0px;
+            z-index: 1;
+        }
+
+        .window {
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            left: 0px;
+            top: 0px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #game-particle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        /* --- CONTROLS --- */
+        .mute-buttons-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        /* Dark Mode Toggle Position */
+        .top-right-controls { 
+            position: absolute; 
+            top: 20px; 
+            right: 20px; 
+            z-index: 10; 
+        }
+
+        .control-toggle {
+            background: transparent;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            color: inherit;
+            font-size: 1.2rem;
+        }
+        
+        body.dark-mode .control-toggle {
+            border-color: rgba(255,255,255,0.15);
+        }
+
+        .control-toggle:hover {
+            transform: translateY(-2px);
+            background: rgba(128, 128, 128, 0.1);
+        }
+
+        .control-toggle.muted {
+            border-color: #EF4444;
+            color: #EF4444;
+        }
+        
+        .control-toggle.muted svg path { stroke: #EF4444 !important; }
+
+        body.light-mode .control-toggle svg path { stroke: #1F2937; }
+        body.dark-mode .control-toggle svg path { stroke: #F3F4F6; }
+
+        /* --- PROGRESS UI --- */
+        .progress-container {
+            position: absolute;
+            /* FIXED: Moved significantly higher (from 33vh to 38vh) */
+            bottom: min(38vh, 58vw);
+            width: 80%;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: bottom 0.5s ease-in-out;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            opacity: 0.8;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background-color: rgba(0,0,0,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+        body.dark-mode .progress-bar { background-color: rgba(255,255,255,0.15); }
+
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background-color: #3B82F6;
+            border-radius: 10px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .timer-bar {
+            width: 100%;
+            height: 6px;
+            background-color: rgba(0,0,0,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        body.dark-mode .timer-bar { background-color: rgba(255,255,255,0.15); }
+
+        .timer-fill {
+            width: 100%;
+            height: 100%;
+            background-color: #EF4444;
+            border-radius: 10px;
+            transition: width 1s linear;
+        }
+
+        .title {
+            font-size: min(3vh, 5vw);
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            display: flex;
+            width: 100%;
+            left: 0px;
+            top: 50%;
+            z-index: 3;
+            transition: top 0.5s ease-in-out;
+            text-align: center;
+            padding: 0 10px;
+        }
+        
+        /* ENDGAME TITLE POSITIONING */
+        .title-endgame { 
+            /* FIXED: Moved up to 60% to avoid overlapping buttons */
+            top: 60% !important; 
+            transform: translate(-50%, -50%) !important;
+            left: 50%;
+            width: 90%;
+            z-index: 20; 
+            flex-direction: column;
+            
+            background: transparent;
+            backdrop-filter: none;
+            box-shadow: none;
+            border: none;
+            
+            /* FIXED: Reduced font size */
+            font-size: min(3vh, 5vw); 
+            font-weight: 800;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        @keyframes popIn {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        /* --- BUTTONS --- */
+        .button {
+            border-radius: 16px;
+            transform: translateY(0px);
+            justify-content: center;
+            font-size: min(2.2vh, 3.5vw);
+            font-weight: 500;
+            height: min(10vh, 15vw);
+            margin: min(1vh, 1.5vw);
+            align-items: center;
+            cursor: pointer;
+            display: flex;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            background: #FFFFFF;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        body.dark-mode .button {
+            background: #1F2937;
+            color: #F3F4F6;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        body.dark-mode .button:hover { background: #374151; }
+
+        .button.disabled { pointer-events: none; opacity: 0.5; filter: grayscale(100%); }
+
+        .small-button {
+            font-size: min(3vh, 4vw);
+            height: min(15vh, 22.5vw);
+            width: min(20vh, 30vw);
+            z-index: 3;
+            position: relative;
+        }
+        
+        .preview-text {
+            font-size: min(4vh, 7vw);
+            font-weight: 600;
+            color: #3B82F6 !important;
+            position: absolute;
+            left: 50%;
+            top: 28%; 
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            animation: fadeIn 0.3s;
+            text-align: center;
+        }
+        
+        .anim-correct {
+            animation: pulseBlue 0.4s ease forwards !important;
+            background-color: #EFF6FF !important;
+            border-color: #3B82F6 !important;
+            color: #1D4ED8 !important;
+        }
+        body.dark-mode .anim-correct {
+            background-color: #1e3a8a !important;
+            border-color: #3B82F6 !important;
+            color: #FFFFFF !important;
+        }
+
+        .anim-wrong {
+            animation: shake 0.4s ease forwards !important;
+            background-color: #FEF2F2 !important;
+            border-color: #EF4444 !important;
+            color: #B91C1C !important;
+        }
+        body.dark-mode .anim-wrong {
+            background-color: #7f1d1d !important;
+            border-color: #EF4444 !important;
+            color: #FFFFFF !important;
+        }
+
+        @keyframes pulseBlue { 
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); } 
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } 
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .button-holder {
+            /* Keep buttons at bottom */
+            height: min(32vh, 48vw); 
+            position: absolute;
+            display: none;
+            width: 100%;
+            bottom: 0px;
+            left: 0px;
+            z-index: 1;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center; 
+            padding-bottom: 20px;
+        }
+
+        .button-holder-row {
+            justify-content: center;
+            align-items: center;
+            display: flex;
+            height: 50%;
+            width: 100%;
+        }
+
+        #button-holder-2 {
+            display: none; 
+            z-index: 5;
+            flex-direction: row; 
+            align-items: center; 
+            justify-content: center; 
+            padding-bottom: 10%; 
+        }
+
+        #play-again, #home {
+            width: calc((0.8 * min(50vh, 90vw) + min(0.5vh, 0.75vw) - 10px) / 2);
+            height: min(8vh, 12vw);
+            border-radius: 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.2s ease;
+            z-index: 3;
+            margin: 0 10px; 
+            font-weight: 500;
+        }
+
+        #play-again {
+            background-color: #3B82F6;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);
+        }
+
+        #home {
+            background-color: #FFFFFF;
+            color: #1F2937;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        body.dark-mode #home {
+            background-color: #1F2937;
+            color: #F3F4F6;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        #play-again:hover, #home:hover { transform: translateY(-2px); }
+
+        .img-holder-container {
+            height: min(40vh, 40vw); 
+            position: absolute;
+            top: 35%; 
+            transform: translateY(-50%);
+            width: 90%;
+            left: 5%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            z-index: 1;
+            box-sizing: border-box;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            cursor: grab;
+            display: flex;
+        }
+        .img-holder-container.centered { justify-content: center; }
+
+        .img-holder {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100%;
+            width: auto;
+            padding-left: 2%;
+            box-sizing: border-box;
+        }
+        .img-holder-container.centered .img-holder {
+            padding-left: 0;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .img {
+            width: min(15vh, 22.5vw);
+            height: 100%;
+            margin: 0 1%;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-size: contain;
+            transition: transform 0.3s;
+            cursor: pointer;
+            flex-shrink: 0;
+            animation: scaleUp 0.5s ease;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+        }
+
+        .try-again-element {
+            width: min(30vh, 40vw);
+            height: min(30vh, 40vw);
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-size: contain;
+            margin: auto;
+        }
+        @keyframes scaleUp { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        
+        #home-menu { z-index: 20; justify-content: center; }
+        
+        .menu-title { 
+            font-size: min(4vh, 7vw); 
+            margin-bottom: 40px; 
+            text-align: center; 
+            font-weight: 700;
+            letter-spacing: -1px;
+            color: inherit;
+        }
+
+        .menu-button {
+            width: 85%;
+            padding: 24px;
+            margin: 12px 0;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding-left: 30px;
+            gap: 20px;
+            transition: all 0.2s;
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .menu-button::after {
+            content: '';
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            opacity: 0.5;
+        }
+
+        .btn-classic { background-color: #EFF6FF; color: #1E3A8A; }
+        .btn-classic::after { background-color: #3B82F6; }
+        .btn-time { background-color: #FEF2F2; color: #991B1B; }
+        .btn-time::after { background-color: #EF4444; }
+        .btn-practice { background-color: #ECFDF5; color: #065F46; }
+        .btn-practice::after { background-color: #10B981; }
+
+        body.dark-mode .btn-classic { background-color: #1e3a8a; color: #DBEAFE; }
+        body.dark-mode .btn-time { background-color: #7f1d1d; color: #FEE2E2; }
+        body.dark-mode .btn-practice { background-color: #064e3b; color: #D1FAE5; }
+
+        .menu-button:hover { transform: scale(1.02); filter: brightness(0.97); }
+        body.dark-mode .menu-button:hover { filter: brightness(1.2); }
+
+        .hearts-container { position: absolute; top: 5%; right: 15%; display: flex; gap: 8px; z-index: 3; }
+        .heart { width: 32px; height: 32px; transition: opacity 0.3s ease; }
+        .heart.lost { opacity: 0.2; }
+        @keyframes animate-svg-stroke-appear { 0% { stroke-dashoffset: 62px; stroke-dasharray: 62px; } 100% { stroke-dashoffset: 124px; stroke-dasharray: 62px; } }
+        .heart.appear .svg-elem-1 { animation: animate-svg-stroke-appear 0.4s ease-in-out 0s both; }
+
+        /* Skip Animation Button moved lower */
+        .skip-toggle-container { 
+            position: absolute; 
+            top: 80px; /* Moved down below controls */
+            right: 20px; 
+            display: none; 
+            align-items: center; 
+            z-index: 10; 
+            background: rgba(0,0,0,0.05);
+            padding: 6px 16px;
+            border-radius: 30px;
+        }
+        body.dark-mode .skip-toggle-container { background: rgba(255,255,255,0.05); }
+
+        .skip-label { font-size: 14px; font-weight: 500; margin-right: 10px; opacity: 0.7; }
+        
+        .skip-toggle { width: 44px; height: 24px; background: #CBD5E1; border-radius: 20px; position: relative; cursor: pointer; transition: background 0.3s ease; }
+        .skip-toggle .toggle-circle { width: 18px; height: 18px; background: #fff; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: transform 0.3s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .skip-toggle.toggled-on { background: #3B82F6; }
+        .skip-toggle.toggled-on .toggle-circle { transform: translateX(20px); }
+
+        .feedback-emoji { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); font-size: 3rem; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 20; }
+        .feedback-emoji.show { opacity: 1; }
+    </style>
+</head>
+<body class="light-mode">
+
+    <!-- Top Right: Dark Mode Toggle -->
+    <div class="top-right-controls">
+        <button class="control-toggle" id="dark-mode-toggle" title="Toggle Dark Mode">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+
+    <div class="game-holder">
+        
+        <!-- HOME MENU -->
+        <div class="window" id="home-menu">
+            <div class="menu-title">Periodic Table</div>
+            
+            <button class="menu-button btn-classic" onclick="startGame('classic')">
+                <i class="fas fa-flask"></i> Classic Mode
+            </button>
+            <button class="menu-button btn-time" onclick="startGame('timeAttack')">
+                <i class="fas fa-stopwatch"></i> Time Attack
+            </button>
+            <button class="menu-button btn-practice" onclick="startGame('practice')">
+                <i class="fas fa-graduation-cap"></i> Practice
+            </button>
+        </div>
+
+        <!-- GAME SCREEN -->
+        <div class="window" id="game-screen" style="display: none;">
+            <canvas id="game-particle-canvas"></canvas>
+            
+            <!-- Audio Controls -->
+            <div class="mute-buttons-container">
+                <button class="control-toggle" id="mute-music" aria-label="Toggle music">
+                    <svg class="music-icon" width="20" height="20" stroke-width="2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 18V5l12-2v13" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="6" cy="18" r="3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="18" cy="16" r="3" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="control-toggle" id="mute-sfx" aria-label="Toggle sound effects">
+                    <svg class="sfx-icon" width="20" height="20" stroke-width="2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="control-toggle" id="voice-toggle" aria-label="Toggle Voice">
+                    <i class="fas fa-microphone"></i>
+                </button>
+            </div>
+
+            <!-- Skip Toggle (Practice) -->
+            <div class="skip-toggle-container" id="skip-toggle-container">
+                <span class="skip-label">Skip Animation</span>
+                <div class="skip-toggle" id="skip-preview">
+                    <div class="toggle-circle"></div>
+                </div>
+            </div>
+
+            <!-- Hearts (Classic) -->
+            <div class="hearts-container" id="hearts-container">
+                <svg class="heart" id="heart1" viewBox="0 0 24 24" fill="#EF4444" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                <svg class="heart" id="heart2" viewBox="0 0 24 24" fill="#EF4444" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                <svg class="heart" id="heart3" viewBox="0 0 24 24" fill="#EF4444" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            </div>
+
+            <div class="feedback-emoji" id="feedback-emoji"></div>
+            
+            <div class="title game-title" id="game-title">Identify Element</div>
+            
+            <div class="img-holder-container">
+                <div class="img-holder" id="img-holder"></div>
+            </div>
+            
+            <div class="progress-container">
+                <div class="progress-text" id="progress-text">0/118</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="timer-bar" id="timer-bar">
+                    <div class="timer-fill" id="timer-fill"></div>
+                </div>
+            </div>
+            
+            <!-- Answer Buttons -->
+            <div class="button-holder" id="button-holder-1">
+                <div class="button-holder-row" id="row-1"></div>
+                <div class="button-holder-row" id="row-2"></div>
+            </div>
+            
+            <!-- End Game Controls (Restored Home/Play Again) -->
+            <div class="button-holder" id="button-holder-2">
+                <div id="play-again">
+                    Play Again
+                </div>
+                <div id="home">
+                    Menu
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* --- CONSTANTS & CONFIG --- */
+        const allElements = [
+            "Hydrogen", "Helium", "Lithium", "Beryllium", "Boron", "Carbon", "Nitrogen", "Oxygen", "Fluorine", "Neon",
+            "Sodium", "Magnesium", "Aluminium", "Silicon", "Phosphorus", "Sulfur", "Chlorine", "Argon", "Potassium", "Calcium",
+            "Scandium", "Titanium", "Vanadium", "Chromium", "Manganese", "Iron", "Cobalt", "Nickel", "Copper", "Zinc",
+            "Gallium", "Germanium", "Arsenic", "Selenium", "Bromine", "Krypton", "Rubidium", "Strontium", "Yttrium", "Zirconium",
+            "Niobium", "Molybdenum", "Technetium", "Ruthenium", "Rhodium", "Palladium", "Silver", "Cadmium", "Indium", "Tin",
+            "Antimony", "Tellurium", "Iodine", "Xenon", "Cesium", "Barium", "Lanthanum", "Cerium", "Praseodymium", "Neodymium",
+            "Promethium", "Samarium", "Europium", "Gadolinium", "Terbium", "Dysprosium", "Holmium", "Erbium", "Thulium", "Ytterbium",
+            "Lutetium", "Hafnium", "Tantalum", "Tungsten", "Rhenium", "Osmium", "Iridium", "Platinum", "Gold", "Mercury",
+            "Thallium", "Lead", "Bismuth", "Polonium", "Astatine", "Radon", "Francium", "Radium", "Actinium", "Thorium",
+            "Protactinium", "Uranium", "Neptunium", "Plutonium", "Americium", "Curium", "Berkelium", "Californium", "Einsteinium", "Fermium",
+            "Mendelevium", "Nobelium", "Lawrencium", "Rutherfordium", "Dubnium", "Seaborgium", "Bohrium", "Hassium", "Meitnerium", "Darmstadtium",
+            "Roentgenium", "Copernicium", "Nihonium", "Flerovium", "Moscovium", "Livermorium", "Tennessine", "Oganesson"
+        ];
+
+        const getImageUrl = (index) => `https://raw.githubusercontent.com/ChemistryC/chemistryelements/65013ae4adbea87c5a6e31b2454b498d27393eaf/${index}.webp`;
+
+        /* --- STATE --- */
+        let gameState = {
+            mode: null,
+            currentIndex: 0,
+            score: 0,
+            lives: 3,
+            isActive: false,
+            timerId: null,
+            timeAttackStarted: false,
+            practiceSkip: false,
+            previewing: false,
+            startTime: 0,
+            practiceCurrentStep: 0, 
+            practiceMaxIndex: 0 
+        };
+
+        let isMusicMuted = localStorage.getItem('musicMuted') === 'true';
+        let isSfxMuted = localStorage.getItem('sfxMuted') === 'true';
+        let isVoiceEnabled = localStorage.getItem('voiceEnabled') !== 'false'; // Default to true
+
+        /* --- AUDIO SYSTEM (Ambient Melody) --- */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let melodyInterval = null;
+        let melodyStep = 0;
+        
+        // Pentatonic Scale (C4 Major)
+        const notes = [261.63, 293.66, 329.63, 392.00, 440.00]; // C D E G A
+
+        function playNote(freq, time) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine'; // Soft sine wave
+            osc.frequency.value = freq;
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            // Soft Attack and Release
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.05, time + 0.1); // Low volume ambient
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 1.5);
+            
+            osc.start(time);
+            osc.stop(time + 1.5);
+        }
+
+        function playBackgroundMusic() {
+            if (isMusicMuted || melodyInterval) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            melodyStep = 0;
+            const stepTime = 600; // Slow, relaxing pace
+            
+            melodyInterval = setInterval(() => {
+                const now = audioCtx.currentTime;
+                // Pick a random note from the scale
+                const note = notes[Math.floor(Math.random() * notes.length)];
+                
+                // 30% chance to play a bass note (octave lower)
+                if (Math.random() > 0.7) {
+                    playNote(note / 2, now);
+                } else {
+                    playNote(note, now);
+                }
+                
+                // Occasionally play a chord (two notes)
+                if (Math.random() > 0.8) {
+                     const note2 = notes[Math.floor(Math.random() * notes.length)];
+                     playNote(note2 * 2, now); // Octave higher
+                }
+
+            }, stepTime);
+        }
+
+        function stopBackgroundMusic() {
+            if (melodyInterval) {
+                clearInterval(melodyInterval);
+                melodyInterval = null;
+            }
+        }
+
+        function playSynthSound(type) {
+            if (isSfxMuted && type !== 'win') return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+            
+            if (type === 'tap') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.linearRampToValueAtTime(800, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.2);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'win') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.setValueAtTime(600, now + 0.1);
+                osc.frequency.setValueAtTime(800, now + 0.2);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.6);
+                osc.start(now); osc.stop(now + 0.6);
+            }
+        }
+
+        /* --- SPEECH SYNTHESIS (Voice) --- */
+        let synth = window.speechSynthesis;
+        let voices = [];
+
+        function loadVoices() {
+            voices = synth.getVoices();
+        }
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        function speak(text, pitch = 1, rate = 2.0) { // Very fast default
+            if (!isVoiceEnabled || !synth) return;
+            
+            // Immediately cancel pending speech for instant reaction
+            synth.cancel();
+
+            const utter = new SpeechSynthesisUtterance(text);
+            const preferredVoice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Google")) || voices.find(v => v.lang.startsWith("en"));
+            if (preferredVoice) utter.voice = preferredVoice;
+            
+            utter.pitch = pitch;
+            utter.rate = rate; 
+            utter.volume = isSfxMuted ? 0 : 1; 
+            
+            synth.speak(utter);
+        }
+
+        /* --- PARTICLES --- */
+        class ChemistryParticle {
+            constructor(canvas, x, y) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 3 + 1;
+                this.speedX = Math.random() * 8 - 4;
+                this.speedY = Math.random() * 8 - 4;
+                this.life = 70;
+                this.fadeDuration = 20;
+                this.color = document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.8)' : 'rgba(59, 130, 246, 0.8)';
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life--;
+                this.speedX *= 0.95;
+                this.speedY *= 0.95;
+            }
+            draw() {
+                let alpha = 1;
+                if (this.life <= this.fadeDuration) {
+                    alpha = this.life / this.fadeDuration;
+                }
+                this.ctx.save();
+                this.ctx.globalAlpha = alpha;
+                this.ctx.beginPath();
+                this.ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                this.ctx.fillStyle = this.color;
+                this.ctx.fill();
+                this.ctx.restore();
+            }
+        }
+
+        let particles = [];
+        const canvas = document.getElementById('game-particle-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            if(canvas.parentElement) {
+                canvas.width = canvas.parentElement.offsetWidth;
+                canvas.height = canvas.parentElement.offsetHeight;
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function triggerParticles(x, y) {
+            for(let i=0; i<15; i++) {
+                particles.push(new ChemistryParticle(canvas, x, y));
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for(let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.update();
+                p.draw();
+                if(p.life <= 0) particles.splice(i, 1);
+            }
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        /* --- UI LOGIC --- */
+        function init() {
+            resizeCanvas();
+            loadVoices(); // Init voice list
+            
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.remove('light-mode');
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.add('light-mode');
+            }
+            
+            // Scroll logic
+            const imgHolderContainer = document.querySelector('.img-holder-container');
+            let isDragging = false;
+            let startX;
+            let scrollLeft;
+            const startDrag = (e) => {
+                isDragging = true;
+                startX = (e.pageX || e.touches[0].pageX) - imgHolderContainer.offsetLeft;
+                scrollLeft = imgHolderContainer.scrollLeft;
+            };
+            const moveDrag = (e) => {
+                if (!isDragging) return;
+                const x = (e.pageX || e.touches[0].pageX) - imgHolderContainer.offsetLeft;
+                const walk = (x - startX) * 2;
+                imgHolderContainer.scrollLeft = scrollLeft - walk;
+            };
+            const stopDrag = () => { isDragging = false; };
+            imgHolderContainer.addEventListener('mousedown', startDrag);
+            imgHolderContainer.addEventListener('touchstart', startDrag);
+            imgHolderContainer.addEventListener('mousemove', moveDrag);
+            imgHolderContainer.addEventListener('touchmove', moveDrag);
+            imgHolderContainer.addEventListener('mouseup', stopDrag);
+            imgHolderContainer.addEventListener('touchend', stopDrag);
+            imgHolderContainer.addEventListener('mouseleave', stopDrag);
+
+            updateSoundIcons();
+            
+            document.getElementById('play-again').onclick = () => {
+                playSynthSound('tap');
+                restartGame();
+            };
+            document.getElementById('home').onclick = goHome;
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            document.body.classList.toggle('light-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+            playSynthSound('tap');
+            updateSoundIcons(); 
+        }
+        document.getElementById('dark-mode-toggle').addEventListener('click', toggleDarkMode);
+
+        const skipToggle = document.getElementById('skip-preview');
+        skipToggle.addEventListener('click', () => {
+            gameState.practiceSkip = !gameState.practiceSkip;
+            skipToggle.classList.toggle('toggled-on', gameState.practiceSkip);
+            playSynthSound('tap');
+        });
+
+        function updateSoundIcons() {
+            if (isMusicMuted) document.getElementById('mute-music').classList.add('muted');
+            else document.getElementById('mute-music').classList.remove('muted');
+            
+            if (isSfxMuted) document.getElementById('mute-sfx').classList.add('muted');
+            else document.getElementById('mute-sfx').classList.remove('muted');
+
+            if (!isVoiceEnabled) document.getElementById('voice-toggle').classList.add('muted');
+            else document.getElementById('voice-toggle').classList.remove('muted');
+        }
+
+        document.getElementById('mute-music').addEventListener('click', () => {
+            isMusicMuted = !isMusicMuted;
+            localStorage.setItem('musicMuted', isMusicMuted);
+            updateSoundIcons();
+            playSynthSound('tap');
+            if (!isMusicMuted) playBackgroundMusic();
+            else stopBackgroundMusic();
+        });
+
+        document.getElementById('mute-sfx').addEventListener('click', () => {
+            isSfxMuted = !isSfxMuted;
+            localStorage.setItem('sfxMuted', isSfxMuted);
+            updateSoundIcons();
+            playSynthSound('tap');
+        });
+
+        document.getElementById('voice-toggle').addEventListener('click', () => {
+            isVoiceEnabled = !isVoiceEnabled;
+            localStorage.setItem('voiceEnabled', isVoiceEnabled);
+            updateSoundIcons();
+            playSynthSound('tap');
+            if(isVoiceEnabled) speak("Voice On");
+        });
+
+        function goHome() {
+            clearInterval(gameState.timerId);
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('home-menu').style.display = 'flex';
+            playSynthSound('tap');
+            stopBackgroundMusic();
+        }
+
+        function startGame(mode) {
+            gameState.mode = mode;
+            gameState.currentIndex = 0;
+            gameState.lives = 3;
+            gameState.score = 0;
+            gameState.isActive = true;
+            gameState.timeAttackStarted = false; 
+            gameState.previewing = false;
+            
+            gameState.practiceCurrentStep = 0;
+            gameState.practiceMaxIndex = 0;
+            
+            document.getElementById('home-menu').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'flex';
+            
+            document.getElementById('button-holder-1').style.display = 'flex'; 
+            document.getElementById('button-holder-2').style.display = 'none'; 
+            
+            // RESET ENDGAME STYLES
+            const prog = document.querySelector('.progress-container');
+            prog.style.display = 'flex'; // Ensure it's back
+            
+            const title = document.querySelector('.title');
+            title.classList.remove('title-endgame');
+            title.innerHTML = "";
+            
+            const imgHolder = document.getElementById('img-holder');
+            imgHolder.innerHTML = ''; 
+            document.querySelector('.img-holder-container').classList.remove('centered');
+
+            const hearts = document.getElementById('hearts-container');
+            const timer = document.getElementById('timer-bar');
+            const skip = document.getElementById('skip-toggle-container');
+            
+            if (mode === 'classic') {
+                hearts.style.display = 'flex';
+                timer.style.display = 'none';
+                skip.style.display = 'none';
+                updateHeartsUI();
+            } else if (mode === 'timeAttack') {
+                hearts.style.display = 'none';
+                timer.style.display = 'block';
+                document.getElementById('timer-fill').style.width = '100%';
+                skip.style.display = 'none';
+            } else if (mode === 'practice') {
+                hearts.style.display = 'none';
+                timer.style.display = 'none';
+                skip.style.display = 'flex';
+            }
+            
+            resizeCanvas();
+            playSynthSound('tap');
+            if(!isMusicMuted) playBackgroundMusic();
+            
+            if (mode === 'practice') {
+                startPracticeRound();
+            } else {
+                nextRound();
+            }
+        }
+
+        function restartGame() {
+            startGame(gameState.mode);
+        }
+
+        function updateHeartsUI() {
+            for(let i=1; i<=3; i++) {
+                const h = document.getElementById(`heart${i}`);
+                if (i <= gameState.lives) {
+                    h.classList.remove('lost');
+                    h.classList.add('appear');
+                } else {
+                    h.classList.add('lost');
+                    h.classList.remove('appear');
+                }
+            }
+        }
+
+        function showFeedback(text, isBad) {
+            const fb = document.getElementById('feedback-emoji');
+            fb.innerText = text;
+            if(isBad) fb.classList.add('bad');
+            else fb.classList.remove('bad');
+            
+            fb.classList.add('show');
+            setTimeout(() => fb.classList.remove('show'), 500);
+        }
+
+        async function startPracticeRound() {
+            gameState.practiceCurrentStep = 0;
+            if (gameState.practiceMaxIndex >= 118) { endGame(true); return; }
+
+            const imgHolder = document.getElementById('img-holder');
+            imgHolder.innerHTML = '';
+
+            document.getElementById('button-holder-1').style.display = 'none';
+            document.getElementById('game-title').innerText = "Memorize Sequence...";
+            gameState.previewing = true;
+
+            const flashElement = async (index) => {
+                return new Promise(resolve => {
+                    const tempTxt = document.createElement('div');
+                    tempTxt.className = 'preview-text'; 
+                    tempTxt.innerText = allElements[index];
+                    document.getElementById('game-screen').appendChild(tempTxt);
+                    
+                    // Voice the element during preview
+                    speak(allElements[index]);
+
+                    setTimeout(() => {
+                        tempTxt.remove();
+                        setTimeout(resolve, 200); 
+                    }, 800);
+                });
+            };
+
+            if (gameState.practiceSkip) {
+                await flashElement(gameState.practiceMaxIndex);
+            } else {
+                for (let i = 0; i <= gameState.practiceMaxIndex; i++) {
+                    await flashElement(i);
+                }
+            }
+
+            gameState.previewing = false;
+            document.getElementById('button-holder-1').style.display = 'flex'; 
+            nextRound();
+        }
+
+        function startTimer() {
+            const timerFill = document.getElementById('timer-fill');
+            if (gameState.timerId) clearTimeout(gameState.timerId);
+            
+            timerFill.style.transition = 'none';
+            timerFill.style.width = '100%';
+            
+            void timerFill.offsetWidth; 
+
+            setTimeout(() => {
+                timerFill.style.transition = 'width 1s linear';
+                timerFill.style.width = '0%';
+            }, 0); 
+            
+            gameState.timerId = setTimeout(() => {
+                handleAnswer(-1, 0, 0, null);
+            }, 1000); 
+        }
+
+        function nextRound() {
+            if (!gameState.isActive) return;
+            
+            let idx;
+            if (gameState.mode === 'practice') idx = gameState.practiceCurrentStep;
+            else idx = gameState.currentIndex;
+            
+            let titleText = "";
+            if (gameState.mode === 'classic') titleText = (idx === 0) ? "Find the First Element" : `Find Element ${idx + 1}`; 
+            if (gameState.mode === 'timeAttack') titleText = `Time Attack: ${idx + 1}`;
+            if (gameState.mode === 'practice') titleText = `Sequence: ${idx + 1}`;
+            document.getElementById('game-title').innerText = titleText;
+
+            let currentProgress = (gameState.mode === 'practice') ? gameState.practiceMaxIndex : idx;
+            document.getElementById('progress-text').innerText = `${currentProgress}/118`;
+            document.getElementById('progress-fill').style.width = `${(currentProgress/118)*100}%`;
+
+            if (idx >= 118) { endGame(true); return; }
+
+            const row1 = document.getElementById('row-1');
+            const row2 = document.getElementById('row-2');
+            row1.innerHTML = '';
+            row2.innerHTML = '';
+
+            const numChoices = (gameState.mode === 'timeAttack') ? 2 : 4;
+            const choices = [idx];
+            while (choices.length < numChoices) {
+                const r = Math.floor(Math.random() * 118);
+                if (!choices.includes(r)) choices.push(r);
+            }
+            
+            for (let i = choices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [choices[i], choices[j]] = [choices[j], choices[i]];
+            }
+
+            choices.forEach((cIdx, i) => {
+                const btn = document.createElement('div');
+                btn.className = 'button small-button';
+                btn.innerText = allElements[cIdx];
+                btn.onclick = (e) => handleAnswer(cIdx, e.clientX, e.clientY, btn);
+                
+                if (gameState.mode === 'timeAttack') row1.appendChild(btn);
+                else {
+                    if (i < 2) row1.appendChild(btn);
+                    else row2.appendChild(btn);
+                }
+            });
+
+            if (gameState.mode === 'timeAttack') {
+                if (gameState.timerId) clearTimeout(gameState.timerId);
+                if (gameState.timeAttackStarted) startTimer();
+                else {
+                    const fill = document.getElementById('timer-fill');
+                    fill.style.transition = 'none';
+                    fill.style.width = '100%';
+                }
+            }
+        }
+
+        function handleAnswer(choiceIdx, x, y, btn) {
+            if (!gameState.isActive) return;
+            
+            let correctIdx;
+            if (gameState.mode === 'practice') correctIdx = gameState.practiceCurrentStep;
+            else correctIdx = gameState.currentIndex;
+            
+            if (choiceIdx === correctIdx) {
+                playSynthSound('correct');
+                speak(allElements[correctIdx]); // SAY ELEMENT NAME
+
+                // Checkpoint Celebration (every 10)
+                let scoreCheck = (gameState.mode === 'practice') ? gameState.practiceMaxIndex : gameState.currentIndex;
+                if ((scoreCheck + 1) % 10 === 0 && scoreCheck > 0) {
+                    const cheers = ["Yes!", "Hurray!", "Absolutely!", "Amazing!"];
+                    const randomCheer = cheers[Math.floor(Math.random() * cheers.length)];
+                    setTimeout(() => speak(randomCheer, 1.2, 1.5), 600); 
+                }
+                
+                if (gameState.mode === 'timeAttack' && !gameState.timeAttackStarted) {
+                    gameState.timeAttackStarted = true;
+                }
+
+                if (btn) {
+                    btn.classList.remove('anim-wrong');
+                    btn.classList.add('anim-correct');
+                    const rect = btn.getBoundingClientRect();
+                    triggerParticles(rect.left + rect.width/2 - canvas.getBoundingClientRect().left, rect.top + rect.height/2 - canvas.getBoundingClientRect().top);
+                }
+                
+                const img = document.createElement('div');
+                img.className = 'img';
+                img.style.backgroundImage = `url('${getImageUrl(correctIdx+1)}')`;
+                const holder = document.getElementById('img-holder');
+                holder.appendChild(img);
+                
+                const container = document.querySelector('.img-holder-container');
+                setTimeout(() => { container.scrollLeft = container.scrollWidth; }, 0);
+                
+                if (gameState.mode === 'practice') {
+                    if (gameState.practiceCurrentStep === gameState.practiceMaxIndex) {
+                        gameState.practiceMaxIndex++;
+                        setTimeout(() => { startPracticeRound(); }, 800);
+                    } else {
+                        gameState.practiceCurrentStep++;
+                        setTimeout(() => { nextRound(); }, 400);
+                    }
+                } else if (gameState.mode === 'timeAttack') {
+                    gameState.currentIndex++;
+                    if (gameState.currentIndex < 118) {
+                        document.getElementById('game-title').innerText = `Time Attack: ${gameState.currentIndex + 1}`;
+                    }
+                    setTimeout(() => { nextRound(); }, 300);
+                } else {
+                    gameState.currentIndex++;
+                    setTimeout(() => { nextRound(); }, 500);
+                }
+                
+            } else {
+                playSynthSound('wrong');
+                // FUNNY MISTAKE SOUNDS
+                const oops = ["Oh no no", "Noooo", "Whoops", "Try again", "Ouch"];
+                const rndOops = oops[Math.floor(Math.random() * oops.length)];
+                speak(rndOops, 0.8, 1.2); 
+
+                if (btn) {
+                    btn.classList.remove('anim-correct');
+                    btn.classList.add('anim-wrong');
+                    btn.classList.add('disabled');
+                }
+                
+                if (gameState.mode === 'practice') endGame(false, allElements[correctIdx]);
+                else if (gameState.mode === 'classic') {
+                    gameState.lives--;
+                    updateHeartsUI();
+                    if (gameState.lives <= 0) endGame(false, allElements[correctIdx]);
+                    else showFeedback("❌", true);
+                } else if (gameState.mode === 'timeAttack') {
+                    endGame(false, allElements[correctIdx]);
+                }
+            }
+        }
+
+        function endGame(win, answer) {
+            gameState.isActive = false;
+            clearInterval(gameState.timerId);
+            
+            // HIDE PROGRESS BAR COMPLETELY
+            document.querySelector('.progress-container').style.display = 'none';
+
+            const title = document.getElementById('game-title');
+            const holder = document.getElementById('img-holder');
+            const container = document.querySelector('.img-holder-container');
+
+            // Reuse the main title element for the text so it respects the 'title-endgame' positioning
+            if (win) {
+                title.innerText = "You Win!";
+                playSynthSound('win');
+                speak("You are the champion!", 1.2, 1.5);
+            } else {
+                // Set the Game Over text and the answer in the same block to keep them together
+                title.innerHTML = `Game Over<br><span style="font-size: 0.8em; font-weight:400;">It was ${answer}</span>`;
+                playSynthSound('wrong');
+                
+                const correctIdx = allElements.indexOf(answer);
+                if (correctIdx !== -1) {
+                    holder.innerHTML = ''; 
+                    const img = document.createElement('div');
+                    img.className = 'try-again-element';
+                    img.style.backgroundImage = `url('${getImageUrl(correctIdx+1)}')`;
+                    holder.appendChild(img);
+                    container.classList.add('centered');
+                }
+            }
+            
+            // Apply positioning class (moves text to bottom 75%)
+            title.classList.add('title-endgame');
+            
+            // Hide buttons, show end menu
+            document.getElementById('button-holder-1').style.display = 'none';
+            const endHolder = document.getElementById('button-holder-2');
+            endHolder.style.display = 'flex';
+            endHolder.style.opacity = '1';
+        }
+
+        init();
+    </script>
+</body>
+</html>
